@@ -7,6 +7,7 @@ package webdav
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"regexp"
 	"sort"
 	"testing"
+	"time"
 )
 
 func TestMemPS(t *testing.T) {
@@ -81,6 +83,7 @@ func TestMemPS(t *testing.T) {
 				{Space: "DAV:", Local: "displayname"},
 				{Space: "DAV:", Local: "supportedlock"},
 				{Space: "DAV:", Local: "getlastmodified"},
+				{Space: "DAV:", Local: "creationdate"},
 			},
 		}, {
 			op:   "propname",
@@ -90,6 +93,7 @@ func TestMemPS(t *testing.T) {
 				{Space: "DAV:", Local: "displayname"},
 				{Space: "DAV:", Local: "getcontentlength"},
 				{Space: "DAV:", Local: "getlastmodified"},
+				{Space: "DAV:", Local: "creationdate"},
 				{Space: "DAV:", Local: "getcontenttype"},
 				{Space: "DAV:", Local: "getetag"},
 				{Space: "DAV:", Local: "supportedlock"},
@@ -115,6 +119,12 @@ func TestMemPS(t *testing.T) {
 				}, {
 					XMLName:  xml.Name{Space: "DAV:", Local: "supportedlock"},
 					InnerXML: []byte(lockEntry),
+				}},
+			}, {
+				Status: http.StatusNotFound,
+				Props: []Property{{
+					XMLName:  xml.Name{Space: "DAV:", Local: "creationdate"},
+					InnerXML: nil,
 				}},
 			}},
 		}, {
@@ -143,6 +153,12 @@ func TestMemPS(t *testing.T) {
 				}, {
 					XMLName:  xml.Name{Space: "DAV:", Local: "supportedlock"},
 					InnerXML: []byte(lockEntry),
+				}},
+			}, {
+				Status: http.StatusNotFound,
+				Props: []Property{{
+					XMLName:  xml.Name{Space: "DAV:", Local: "creationdate"},
+					InnerXML: nil,
 				}},
 			}},
 		}, {
@@ -175,9 +191,13 @@ func TestMemPS(t *testing.T) {
 				}, {
 					XMLName:  xml.Name{Space: "DAV:", Local: "supportedlock"},
 					InnerXML: []byte(lockEntry),
-				}}}, {
+				}},
+			}, {
 				Status: http.StatusNotFound,
 				Props: []Property{{
+					XMLName:  xml.Name{Space: "DAV:", Local: "creationdate"},
+					InnerXML: nil,
+				}, {
 					XMLName: xml.Name{Space: "foo", Local: "bar"},
 				}}},
 			},
@@ -462,6 +482,7 @@ func TestMemPS(t *testing.T) {
 				{Space: "DAV:", Local: "displayname"},
 				{Space: "DAV:", Local: "getcontentlength"},
 				{Space: "DAV:", Local: "getlastmodified"},
+				{Space: "DAV:", Local: "creationdate"},
 				{Space: "DAV:", Local: "getcontenttype"},
 				{Space: "DAV:", Local: "getetag"},
 				{Space: "DAV:", Local: "supportedlock"},
@@ -712,5 +733,52 @@ func TestFindETagOverride(t *testing.T) {
 	}
 	if ETag != originalETag {
 		t.Fatalf("ETag wrong want %q got %q", originalETag, ETag)
+	}
+}
+
+type overrideBirthTime struct {
+	os.FileInfo
+	birthTime time.Time
+	err       error
+}
+
+func (o *overrideBirthTime) BirthTime(ctx context.Context) (time.Time, error) {
+	return o.birthTime, o.err
+}
+
+func TestFindCreationDateOverride(t *testing.T) {
+	fs, err := buildTestFS([]string{"touch /file"})
+	if err != nil {
+		t.Fatalf("cannot create test filesystem: %v", err)
+	}
+	ctx := context.Background()
+	fi, err := fs.Stat(ctx, "/file")
+	if err != nil {
+		t.Fatalf("cannot Stat /file: %v", err)
+	}
+
+	// Check non overridden case
+	_, err = findCreationDate(ctx, fs, nil, "/file", fi)
+	if err != ErrNotImplemented {
+		t.Fatalf("findContentType for non-BirthDater should fail with ErrNotImplemented")
+	}
+
+	// Now try overriding the BirthTime
+	birthTime := time.Now()
+	o := &overrideBirthTime{fi, birthTime, nil}
+	creationDate, err := findCreationDate(ctx, fs, nil, "/file", o)
+	if err != nil {
+		t.Fatalf("findCreationDate /file failed: %v", err)
+	}
+	expectedCreationDate := birthTime.UTC().Format(http.TimeFormat)
+	if creationDate != expectedCreationDate {
+		t.Fatalf("ETag wrong want %q got %q", expectedCreationDate, creationDate)
+	}
+
+	// Now return ErrNotImplemented and check it gets passed through
+	o = &overrideBirthTime{fi, time.Time{}, ErrNotImplemented}
+	_, err = findCreationDate(ctx, fs, nil, "/file", o)
+	if !errors.Is(err, ErrNotImplemented) {
+		t.Fatalf("findContentType should pass through ErrNotImplemented")
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 )
 
 // Proppatch describes a property update instruction as defined in RFC 4918.
@@ -131,8 +132,8 @@ var liveProps = map[xml.Name]struct {
 		dir: true,
 	},
 	{Space: "DAV:", Local: "creationdate"}: {
-		findFn: nil,
-		dir:    false,
+		findFn: findCreationDate,
+		dir:    true,
 	},
 	{Space: "DAV:", Local: "getcontentlanguage"}: {
 		findFn: nil,
@@ -188,6 +189,13 @@ func props(ctx context.Context, fs FileSystem, ls LockSystem, name string, pname
 
 	pstatOK := Propstat{Status: http.StatusOK}
 	pstatNotFound := Propstat{Status: http.StatusNotFound}
+
+	notFound := func(pn xml.Name) {
+		pstatNotFound.Props = append(pstatNotFound.Props, Property{
+			XMLName: pn,
+		})
+	}
+
 	for _, pn := range pnames {
 		// If this file has dead properties, check if they contain pn.
 		if dp, ok := deadProps[pn]; ok {
@@ -198,16 +206,19 @@ func props(ctx context.Context, fs FileSystem, ls LockSystem, name string, pname
 		if prop := liveProps[pn]; prop.findFn != nil && (prop.dir || !isDir) {
 			innerXML, err := prop.findFn(ctx, fs, ls, name, fi)
 			if err != nil {
-				return nil, err
+				if errors.Is(err, ErrNotImplemented) {
+					notFound(pn)
+					continue
+				} else {
+					return nil, err
+				}
 			}
 			pstatOK.Props = append(pstatOK.Props, Property{
 				XMLName:  pn,
 				InnerXML: []byte(innerXML),
 			})
 		} else {
-			pstatNotFound.Props = append(pstatNotFound.Props, Property{
-				XMLName: pn,
-			})
+			notFound(pn)
 		}
 	}
 	return makePropstats(pstatOK, pstatNotFound), nil
@@ -466,4 +477,30 @@ func findSupportedLock(ctx context.Context, fs FileSystem, ls LockSystem, name s
 		`<D:lockscope><D:exclusive/></D:lockscope>` +
 		`<D:locktype><D:write/></D:locktype>` +
 		`</D:lockentry>`, nil
+}
+
+// BirthTimer is an optional interface for the os.FileInfo objects
+// returned by FileSystem.
+//
+// If this interface is defined, then it will be used to read the
+// birth time (creation time) from the object.
+//
+// If this interface is not defined, then the file will have no
+// creation time.
+type BirthTimer interface {
+	// Return the file's BirthTime. If BirthTime isn't supported, this function
+	// should return ErrNotImplemented.
+	BirthTime(ctx context.Context) (time.Time, error)
+}
+
+func findCreationDate(ctx context.Context, fs FileSystem, ls LockSystem, name string, fi os.FileInfo) (string, error) {
+	bt, ok := fi.(BirthTimer)
+	if !ok {
+		return "", ErrNotImplemented
+	}
+	ts, err := bt.BirthTime(ctx)
+	if err != nil {
+		return "", err
+	}
+	return ts.UTC().Format(http.TimeFormat), nil
 }
