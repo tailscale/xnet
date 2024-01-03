@@ -11,7 +11,7 @@ import (
 	"os"
 	"syscall"
 
-	"golang.org/x/net/ipv6"
+	"github.com/tailscale/xnet/ipv6"
 )
 
 func protocolNotSupported(err error) bool {

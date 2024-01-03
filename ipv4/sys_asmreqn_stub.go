@@ -9,7 +9,7 @@ package ipv4
 import (
 	"net"
 
-	"golang.org/x/net/internal/socket"
+	"github.com/tailscale/xnet/internal/socket"
 )
 
 func (so *sockOpt) getIPMreqn(c *socket.Conn) (*net.Interface, error) {

@@ -9,8 +9,8 @@ package ipv4
 import (
 	"unsafe"
 
-	"golang.org/x/net/internal/iana"
-	"golang.org/x/net/internal/socket"
+	"github.com/tailscale/xnet/internal/iana"
+	"github.com/tailscale/xnet/internal/socket"
 
 	"golang.org/x/sys/unix"
 )

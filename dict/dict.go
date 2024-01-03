@@ -6,7 +6,7 @@
 // as defined in RFC 2229.
 //
 // The dict package is frozen and is not accepting new features.
-package dict // import "golang.org/x/net/dict"
+package dict // import "github.com/tailscale/xnet/dict"
 
 import (
 	"net/textproto"

@@ -9,8 +9,8 @@ import (
 	"net"
 	"sync"
 
-	"golang.org/x/net/internal/iana"
-	"golang.org/x/net/internal/socket"
+	"github.com/tailscale/xnet/internal/iana"
+	"github.com/tailscale/xnet/internal/socket"
 )
 
 // Note that RFC 3542 obsoletes RFC 2292 but OS X Snow Leopard and the

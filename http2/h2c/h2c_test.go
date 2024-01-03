@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/net/http2"
+	"github.com/tailscale/xnet/http2"
 )
 
 func ExampleNewHandler() {

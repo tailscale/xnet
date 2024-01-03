@@ -4,7 +4,7 @@
 
 package ipv4
 
-import "golang.org/x/net/internal/iana"
+import "github.com/tailscale/xnet/internal/iana"
 
 // An ICMPType represents a type of ICMP message.
 type ICMPType int

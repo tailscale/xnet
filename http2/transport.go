@@ -33,9 +33,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/net/http/httpguts"
-	"golang.org/x/net/http2/hpack"
-	"golang.org/x/net/idna"
+	"github.com/tailscale/xnet/http/httpguts"
+	"github.com/tailscale/xnet/http2/hpack"
+	"github.com/tailscale/xnet/idna"
 )
 
 const (

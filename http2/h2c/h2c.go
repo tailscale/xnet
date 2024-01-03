@@ -22,8 +22,8 @@ import (
 	"os"
 	"strings"
 
-	"golang.org/x/net/http/httpguts"
-	"golang.org/x/net/http2"
+	"github.com/tailscale/xnet/http/httpguts"
+	"github.com/tailscale/xnet/http2"
 )
 
 var (

@@ -7,8 +7,8 @@
 package ipv4
 
 import (
-	"golang.org/x/net/bpf"
-	"golang.org/x/net/internal/socket"
+	"github.com/tailscale/xnet/bpf"
+	"github.com/tailscale/xnet/internal/socket"
 )
 
 func (so *sockOpt) setAttachFilter(c *socket.Conn, f []bpf.RawInstruction) error {

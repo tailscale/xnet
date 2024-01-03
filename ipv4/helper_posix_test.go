@@ -11,7 +11,7 @@ import (
 	"os"
 	"syscall"
 
-	"golang.org/x/net/ipv4"
+	"github.com/tailscale/xnet/ipv4"
 )
 
 func protocolNotSupported(err error) bool {

@@ -9,7 +9,7 @@ package ipv6
 import (
 	"net"
 
-	"golang.org/x/net/internal/socket"
+	"github.com/tailscale/xnet/internal/socket"
 )
 
 // ReadFrom reads a payload of the received IPv6 datagram, from the

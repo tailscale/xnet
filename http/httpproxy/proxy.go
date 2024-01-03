@@ -19,7 +19,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"golang.org/x/net/idna"
+	"github.com/tailscale/xnet/idna"
 )
 
 // Config holds configuration for HTTP proxy settings. See
