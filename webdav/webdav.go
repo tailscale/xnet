@@ -287,6 +287,7 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 		return http.StatusInternalServerError, err
 	}
 	w.Header().Set("ETag", etag)
+	w.Header().Set("Last-Modified", fi.ModTime().Format(http.TimeFormat))
 	return http.StatusCreated, nil
 }
 
