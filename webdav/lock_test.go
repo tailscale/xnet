@@ -190,7 +190,7 @@ func TestMemLSLookup(t *testing.T) {
 					continue
 				}
 
-				got := m.lookup(name, Condition{Token: token})
+				got, _ := m.lookup(name, Condition{Token: token})
 				want := base
 				if token == badToken {
 					want = nil
@@ -226,6 +226,12 @@ func TestMemLSConfirm(t *testing.T) {
 	}
 	if err := m.consistent(); err != nil {
 		t.Fatalf("Create: inconsistent state: %v", err)
+	}
+
+	// Test an unlocked resource.
+	_, err = m.Confirm(now, "/other", "", Condition{Token: alice})
+	if err != nil {
+		t.Fatalf("Confirm unlocked: %v", err)
 	}
 
 	// Test a mismatch between name and condition.

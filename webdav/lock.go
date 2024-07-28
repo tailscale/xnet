@@ -38,8 +38,9 @@ type Condition struct {
 type LockSystem interface {
 	// Confirm confirms that the caller can claim all of the locks specified by
 	// the given conditions, and that holding the union of all of those locks
-	// gives exclusive access to all of the named resources. Up to two resources
-	// can be named. Empty names are ignored.
+	// gives exclusive access to all of the named resources, or that the
+	// resources are not currently locked. Up to two resources can be named.
+	// Empty names are ignored.
 	//
 	// Exactly one of release and err will be non-nil. If release is non-nil,
 	// all of the requested locks are held until release is called. Calling
@@ -150,13 +151,14 @@ func (m *memLS) Confirm(now time.Time, name0, name1 string, conditions ...Condit
 	m.collectExpiredNodes(now)
 
 	var n0, n1 *memLSNode
+	var n0Locked, n1Locked bool
 	if name0 != "" {
-		if n0 = m.lookup(slashClean(name0), conditions...); n0 == nil {
+		if n0, n0Locked = m.lookup(slashClean(name0), conditions...); n0Locked {
 			return nil, ErrConfirmationFailed
 		}
 	}
 	if name1 != "" {
-		if n1 = m.lookup(slashClean(name1), conditions...); n1 == nil {
+		if n1, n1Locked = m.lookup(slashClean(name1), conditions...); n1Locked {
 			return nil, ErrConfirmationFailed
 		}
 	}
@@ -188,25 +190,34 @@ func (m *memLS) Confirm(now time.Time, name0, name1 string, conditions ...Condit
 // matches at least one of the given conditions and that lock isn't held by
 // another party. Otherwise, it returns nil.
 //
+// locked indicates whether or not the name is currently locked by something
+// other than the specified conditions. If locked is false, n may or may not be
+// nil depending on whether or not the given conditions matched an existing
+// lock.
+//
 // n may be a parent of the named resource, if n is an infinite depth lock.
-func (m *memLS) lookup(name string, conditions ...Condition) (n *memLSNode) {
+func (m *memLS) lookup(name string, conditions ...Condition) (n *memLSNode, locked bool) {
 	// TODO: support Condition.Not and Condition.ETag.
 	for _, c := range conditions {
 		n = m.byToken[c.Token]
-		if n == nil || n.held {
+		if n == nil {
+			continue
+		}
+		if n.held {
+			locked = true
 			continue
 		}
 		if name == n.details.Root {
-			return n
+			return n, false
 		}
 		if n.details.ZeroDepth {
 			continue
 		}
 		if n.details.Root == "/" || strings.HasPrefix(name, n.details.Root+"/") {
-			return n
+			return n, false
 		}
 	}
-	return nil
+	return nil, locked || !m.canCreate(name, true)
 }
 
 func (m *memLS) hold(n *memLSNode) {
