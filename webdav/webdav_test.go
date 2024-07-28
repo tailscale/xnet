@@ -185,6 +185,17 @@ func TestPrefix(t *testing.T) {
 			continue
 		}
 
+		wantI := map[string]int{
+			"/":       http.StatusCreated,
+			"/a/":     http.StatusCreated,
+			"/a/b/":   http.StatusCreated,
+			"/a/b/c/": http.StatusNotFound,
+		}[prefix]
+		if _, err := do("MOVE", srv.URL+"/a/b/e/g", blah, wantI, "If", ifHeader, "Destination", "/a/b/e/h"); err != nil {
+			t.Errorf("prefix=%-9q MOVE /a/b/e/g to a/b/e/h: %v", prefix, err)
+			continue
+		}
+
 		got, err := find(ctx, nil, fs, "/")
 		if err != nil {
 			t.Errorf("prefix=%-9q find: %v", prefix, err)
@@ -192,9 +203,9 @@ func TestPrefix(t *testing.T) {
 		}
 		sort.Strings(got)
 		want := map[string][]string{
-			"/":       {"/", "/a", "/a/b", "/a/b/c", "/a/b/e", "/a/b/e/f", "/a/b/e/g"},
-			"/a/":     {"/", "/b", "/b/c", "/b/e", "/b/e/f", "/b/e/g"},
-			"/a/b/":   {"/", "/c", "/e", "/e/f", "/e/g"},
+			"/":       {"/", "/a", "/a/b", "/a/b/c", "/a/b/e", "/a/b/e/f", "/a/b/e/h"},
+			"/a/":     {"/", "/b", "/b/c", "/b/e", "/b/e/f", "/b/e/h"},
+			"/a/b/":   {"/", "/c", "/e", "/e/f", "/e/h"},
 			"/a/b/c/": {"/"},
 		}[prefix]
 		if !reflect.DeepEqual(got, want) {
